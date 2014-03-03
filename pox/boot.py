@@ -167,6 +167,7 @@ def _do_launch (argv):
       curargs = {}
       components[arg].append(curargs)
       component_order.append(arg)
+      print("import module arg: %s" % arg) #andy
     else:
       arg = arg.lstrip("-").split("=", 1)
       arg[0] = arg[0].replace("-", "_")
@@ -503,6 +504,7 @@ def boot (argv = None):
     argv = pre + "py --disable".split() + argv
 
     if _do_launch(argv):
+      print("usually startup with _post_startup")
       _post_startup()
       core.goUp()
     else:

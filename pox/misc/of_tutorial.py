@@ -44,6 +44,7 @@ class Tutorial (object):
     # Use this table to keep track of which ethernet address is on
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
+    log.info("init %s" % (connection,))
 
 
   def resend_packet (self, packet_in, out_port):
@@ -52,6 +53,7 @@ class Tutorial (object):
     "packet_in" is the ofp_packet_in object the switch had sent to the
     controller due to a table-miss.
     """
+    log.info("resend_packet")
     msg = of.ofp_packet_out()
     msg.data = packet_in
 
@@ -72,6 +74,7 @@ class Tutorial (object):
     # We want to output to all ports -- we do that using the special
     # OFPP_ALL port as the output port.  (We could have also used
     # OFPP_FLOOD.)
+    log.info("act_like_hub")
     self.resend_packet(packet_in, of.OFPP_ALL)
 
     # Note that if we didn't get a valid buffer_id, a slightly better
@@ -124,7 +127,7 @@ class Tutorial (object):
     """
     Handles packet in messages from the switch.
     """
-
+    log.info("_handle_PacketIn")
     packet = event.parsed # This is the parsed packet data.
     if not packet.parsed:
       log.warning("Ignoring incomplete packet")
