@@ -100,7 +100,6 @@ import operator
 # handler set will not keep the source (publisher) alive.
 import weakref
 
-
 _nextEventID = 0
 def _generateEventID ():
   """
@@ -229,6 +228,7 @@ class EventMixin (object):
     #      the specific handler that failed...
     try:
       return self.raiseEvent(event, *args, **kw)
+
     except:
       if handleEventException is not None:
         import sys

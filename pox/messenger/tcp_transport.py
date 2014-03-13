@@ -22,6 +22,7 @@ from pox.lib.recoco.recoco import *
 
 class TCPTransport (Task, Transport):
   def __init__ (self, address = "0.0.0.0", port = 7790, nexus = None):
+    log.info("TCPTransport init")
     port = int(port)
     Task.__init__(self)
     Transport.__init__(self, nexus)
@@ -41,7 +42,7 @@ class TCPTransport (Task, Transport):
     listener.listen(0)
 
     log.debug("Listening on %s:%i" % (self._addr))
-
+    log.info("TCPTransport run")
     con = None
     while core.running:
       try:

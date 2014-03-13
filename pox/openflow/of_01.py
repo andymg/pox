@@ -76,12 +76,12 @@ def handle_ECHO_REPLY (con, msg):
 
 def handle_ECHO_REQUEST (con, msg): #S
   reply = msg
-
   reply.header_type = of.OFPT_ECHO_REPLY
   con.send(reply)
 
 def handle_FLOW_REMOVED (con, msg): #A
   e = con.ofnexus.raiseEventNoErrors(FlowRemoved, con, msg)
+  log.debug("openflow message: FlowRemoved")
   if e is None or e.halt != True:
     con.raiseEventNoErrors(FlowRemoved, con, msg)
 
@@ -91,6 +91,7 @@ def handle_FEATURES_REPLY (con, msg):
   con.original_ports._ports = set(msg.ports)
   con.ports._reset()
   con.dpid = msg.datapath_id
+  log.debug("openflow message: FeaturesReceived")
 
   if not connecting:
     con.ofnexus._connect(con)
@@ -162,8 +163,10 @@ def handle_STATS_REPLY (con, msg):
   if e is None or e.halt != True:
     con.raiseEventNoErrors(RawStatsReply, con, msg)
   con._incoming_stats_reply(msg)
+  log.debug("openflow message: RawStatsReply")
 
 def handle_PORT_STATUS (con, msg): #A
+  log.debug("openflow message: PortStatus")
   if msg.reason == of.OFPPR_DELETE:
     con.ports._forget(msg.desc)
   else:
@@ -173,11 +176,13 @@ def handle_PORT_STATUS (con, msg): #A
     con.raiseEventNoErrors(PortStatus, con, msg)
 
 def handle_PACKET_IN (con, msg): #A
+  log.debug("openflow message: PacketIn")
   e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
   if e is None or e.halt != True:
     con.raiseEventNoErrors(PacketIn, con, msg)
 
 def handle_ERROR_MSG (con, msg): #A
+  log.debug("openflow message: OpenFlow Error")
   err = ErrorIn(con, msg)
   e = con.ofnexus.raiseEventNoErrors(err)
   if e is None or e.halt != True:
@@ -187,18 +192,21 @@ def handle_ERROR_MSG (con, msg): #A
               msg.show(str(con) + " Error: ").strip())
 
 def handle_BARRIER (con, msg):
+  log.debug("openflow message: BarrierIn")
   e = con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)
   if e is None or e.halt != True:
     con.raiseEventNoErrors(BarrierIn, con, msg)
 
 # handlers for stats replies
 def handle_OFPST_DESC (con, parts):
+  log.debug("openflow message: SwitchDescReceived")
   msg = parts[0].body
   e = con.ofnexus.raiseEventNoErrors(SwitchDescReceived,con,parts[0],msg)
   if e is None or e.halt != True:
     con.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
 
 def handle_OFPST_FLOW (con, parts):
+  log.debug("openflow message: FlowStatsReceived")
   msg = []
   for part in parts:
     msg.extend(part.body)
@@ -207,6 +215,7 @@ def handle_OFPST_FLOW (con, parts):
     con.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
 
 def handle_OFPST_AGGREGATE (con, parts):
+  log.debug("openflow message: AggregateFlowStatsReceived")
   msg = parts[0].body
   e = con.ofnexus.raiseEventNoErrors(AggregateFlowStatsReceived, con,
                                      parts[0], msg)
@@ -214,6 +223,7 @@ def handle_OFPST_AGGREGATE (con, parts):
     con.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
 
 def handle_OFPST_TABLE (con, parts):
+  log.debug("openflow message: TableStatsReceived")
   msg = []
   for part in parts:
     msg.extend(part.body)
@@ -222,6 +232,7 @@ def handle_OFPST_TABLE (con, parts):
     con.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
 
 def handle_OFPST_PORT (con, parts):
+  log.debug("openflow message: PortStatsReceived")
   msg = []
   for part in parts:
     msg.extend(part.body)
@@ -230,6 +241,7 @@ def handle_OFPST_PORT (con, parts):
     con.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
 
 def handle_OFPST_QUEUE (con, parts):
+  log.debug("openflow message: QueueStatsReceived")
   msg = []
   for part in parts:
     msg.extend(part.body)
@@ -734,8 +746,23 @@ class Connection (EventMixin):
       # correctly call libopenflow to unpack it.
 
       ofp_type = ord(self.buf[offset+1])
+  #     log.info("of.OFPT_PACKET_IN is %d"%of.OFPT_PACKET_IN)
+  #     log.info("of.OFPT_PORT_STATUS is %d"%of.OFPT_PORT_STATUS)
+  #     log.info("of.OFPT_FLOW_REMOVED is %d"%of.OFPT_FLOW_REMOVED)
+  # #       of.OFPT_HELLO : handle_HELLO,
+  # of.OFPT_ECHO_REQUEST : handle_ECHO_REQUEST,
+  # of.OFPT_ECHO_REPLY : handle_ECHO_REPLY,
+  # of.OFPT_PACKET_IN : handle_PACKET_IN,
+  # of.OFPT_FEATURES_REPLY : handle_FEATURES_REPLY,
+  # of.OFPT_PORT_STATUS : handle_PORT_STATUS,
+  # of.OFPT_ERROR : handle_ERROR_MSG,
+  # of.OFPT_BARRIER_REPLY : handle_BARRIER,
+  # of.OFPT_STATS_REPLY : handle_STATS_REPLY,
+  # of.OFPT_FLOW_REMOVED : handle_FLOW_REMOVED,
+  # of.OFPT_VENDOR : handle_VENDOR,
 
       if ord(self.buf[offset]) != of.OFP_VERSION:
+
         if ofp_type == of.OFPT_HELLO:
           # We let this through and hope the other side switches down.
           pass
@@ -754,6 +781,8 @@ class Connection (EventMixin):
 
       try:
         h = handlers[ofp_type]
+        if ofp_type != 2:
+          log.debug("openflow message %s is received" % ofp_type)
         h(self, msg)
       except:
         log.exception("%s: Exception while handling OpenFlow message:\n" +
@@ -854,6 +883,7 @@ class OpenFlow_01_Task (Task):
 
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    log.info("Create new socket in OpenFlow_01_Task")
     try:
       listener.bind((self.address, self.port))
     except socket.error as (errno, strerror):
@@ -902,6 +932,7 @@ class OpenFlow_01_Task (Task):
               if pox.openflow.debug.pcap_traces:
                 new_sock = wrap_socket(new_sock)
               new_sock.setblocking(0)
+              log.info("New client is connected")
               # Note that instantiating a Connection object fires a
               # ConnectionUp event (after negotation has completed)
               newcon = Connection(new_sock)
