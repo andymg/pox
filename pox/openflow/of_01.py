@@ -29,6 +29,7 @@ from pox.lib.socketcapture import CaptureSocket
 import pox.openflow.debug
 from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow import *
+import binascii
 
 log = core.getLogger()
 
@@ -708,6 +709,7 @@ class Connection (EventMixin):
       deferredSender.send(self, data)
       return
     try:
+      log.debug("sending data to socket:%s"% binascii.hexlify(data))
       l = self.sock.send(data)
       if l != len(data):
         self.msg("Didn't send complete buffer.")
