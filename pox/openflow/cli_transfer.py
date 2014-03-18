@@ -1,6 +1,4 @@
-#!/bin/sh -
-
-# Copyright 2011-2012 James McCauley
+# Copyright 2014 Andy Meng
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,32 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# If you have PyPy 1.6+ in a directory called pypy alongside pox.py, we
-# use it.
-# Otherwise, we try to use a Python interpreter called python2.7, which
-# is a good idea if you're using Python from MacPorts, for example.
-# We fall back to just "python" and hope that works.
-
-''''true
-#export OPT="-u -O"
-export OPT="-u"
-export FLG=""
-if [ "$(basename $0)" = "debug-pox.py" ]; then
-  export OPT=""
-  export FLG="--debug"
-fi
-
-if [ -x pypy/bin/pypy ]; then
-  exec pypy/bin/pypy $OPT "$0" $FLG "$@"
-fi
-
-if type python2.7 > /dev/null 2> /dev/null; then
-  exec python2.7 $OPT "$0" $FLG "$@"
-fi
-exec python $OPT "$0" $FLG "$@"
-'''
-
-from pox.boot import boot
 from pox.core import core
 import pox
 import pox.lib.util
@@ -94,6 +66,16 @@ class Cli_Transfer_Task (threading.Thread):
 				log.error("the client connect failed")
 			return
 
-if __name__ == '__main__':
-  boot()
-  cli.run()
+
+def launch(port=6633,address='0.0.0.0'):
+	"""
+	The main launch function for cli transfer task.
+	"""
+	cli = Cli_Transfer_Task(port=int(port),address=address)
+	time.sleep(1)
+	cli.run()
+	core.register("cli_transfer",cli)
+	return cli
+
+if "__main__" == __name__:
+	cli.run()

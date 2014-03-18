@@ -59,6 +59,8 @@ import pox.openflow
 import pox.openflow.of_01
 from pox.lib.util import str_to_bool
 
+from openflow.cli_transfer import Cli_Transfer_Task
+
 # Function to run on main thread
 _main_thread_function = None
 
@@ -507,6 +509,9 @@ def boot (argv = None):
       print("usually startup with _post_startup")
       _post_startup()
       core.goUp()
+      time.sleep(2)
+      cli_socket=Cli_Transfer_Task()
+      cli_socket.run()
     else:
       #return
       quiet = True
