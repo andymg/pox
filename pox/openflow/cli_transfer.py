@@ -24,13 +24,11 @@ from pox.lib.socketcapture import CaptureSocket
 import pox.openflow.debug
 from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow import *
-import binascii
 from errno import EAGAIN, ECONNRESET, EADDRINUSE, EADDRNOTAVAIL
 
 log = core.getLogger()
 
 import socket
-import select
 import binascii
 import thread
 import struct
@@ -50,12 +48,6 @@ class Cli_Transfer_Task (object):
 		#self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		log.debug("Created new socket socket Cli_Transfer_Task")
 		log.debug("cli transfer initialed on %s:%s",self.address,self.port)
-		
-	def pack_hello(self):
-		packed = b""
-		packed += struct.pack("!BBHL", self.version, self.header_type,
-		8, self.xid)
-		return packed
 
 	def analysis_data(self,data):
 		log.debug("controller -->switch: %s" % binascii.hexlify(data))
@@ -68,9 +60,9 @@ class Cli_Transfer_Task (object):
 		if self.header_type == 0: # this is the hello message
 			log.debug("controller -->switch hello message")
 			self.xid = ord(data[6])*256+ord(data[7])
-			hello_req = self.pack_hello()
-			log.debug("switch --> controller: %s"%binascii.hexlify(hello_req))
-			self.socket.send(hello_req)
+			hello_reply = of.ofp_hello()
+			log.debug("switch --> controller: %s"%binascii.hexlify(hello_reply.pack()))
+			self.socket.send(hello_reply.pack())
 
 		elif self.header_type == 5: # this is the feature request message
 			log.debug("controller --> switch feature request package")
@@ -140,8 +132,6 @@ def launch(port=6633,address='0.0.0.0'):
 	cli.run()
 	core.register("cli_transfer",cli)
 	return cli
-
-
 
 if "__main__" == __name__:
 	cli.run()
