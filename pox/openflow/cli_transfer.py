@@ -31,15 +31,15 @@ log = core.getLogger()
 import socket
 import select
 import binascii
-import threading
+import thread
 
-class Cli_Transfer_Task (threading.Thread):
+class Cli_Transfer_Task (object):
 	"""
 	This is the main task for cli transfer, the client socket to port 6633 is created in this task
 	All the data analysis is done in socket class
 	"""
 	def __init__ (self,port=6633,address = '0.0.0.0'):
-		threading.Thread.__init__(self)
+		#thread.__init__(self)
 		self.port = int(port)
 		self.address = address
 		self.started = False
@@ -65,7 +65,10 @@ class Cli_Transfer_Task (threading.Thread):
 			else:
 				log.error("the client connect failed")
 			return
-
+	def new_thread(self,port=6633,address='0.0.0.0'):
+		cli = self.__init__(port=int(port),address=address)
+		cli_thread = thread.start_new_thread(run())
+		return cli_thread
 
 def launch(port=6633,address='0.0.0.0'):
 	"""
@@ -76,6 +79,8 @@ def launch(port=6633,address='0.0.0.0'):
 	cli.run()
 	core.register("cli_transfer",cli)
 	return cli
+
+
 
 if "__main__" == __name__:
 	cli.run()

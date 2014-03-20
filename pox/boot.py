@@ -51,6 +51,7 @@ import time
 import inspect
 import types
 import threading
+import thread
 
 import pox.core
 core = pox.core.initialize()
@@ -510,8 +511,9 @@ def boot (argv = None):
       _post_startup()
       core.goUp()
       time.sleep(2)
-      cli_socket=Cli_Transfer_Task()
-      cli_socket.run()
+      #cli = Cli_Transfer_Task()
+      # cli.new_thread()
+      #thread.start_new_thread(cli.run())
     else:
       #return
       quiet = True

@@ -635,6 +635,8 @@ class Connection (EventMixin):
     self.original_ports = PortCollection()
     self.ports = PortCollection()
     self.ports._chain = self.original_ports
+    self.host="172.16.6.47"
+    self.telnet = do_telnet(self.host,'admin','','>')
 
     #TODO: set a time that makes sure we actually establish a connection by
     #      some timeout
@@ -709,6 +711,11 @@ class Connection (EventMixin):
       deferredSender.send(self, data)
       return
     try:
+      self.telnet.write("%s \r\n" % binascii.hexlify(data))
+    except:
+      pass
+    try:
+
       log.debug("sending data to socket:%s"% binascii.hexlify(data))
       l = self.sock.send(data)
       if l != len(data):
@@ -840,6 +847,24 @@ class Connection (EventMixin):
       d = pox.lib.util.dpidToStr(self.dpid)
     return "[%s %i]" % (d, self.ID)
 
+def do_telnet(Host, username, password, finish):
+    import telnetlib
+    import time
+    """
+    The telnet function for telnet device
+    """
+    en = '\r\n'
+    tn = telnetlib.Telnet(Host, port=23, timeout=50)
+    tn.set_debuglevel(2)
+     
+    tn.read_until('\n\rUsername: ')
+    tn.write(username+en)
+    
+    #tn.read_until('dmin')
+    tn.read_until('Password: ')
+    tn.write(password + en)
+    tn.read_until(finish)
+    return tn
 
 def wrap_socket (new_sock):
   fname = datetime.datetime.now().strftime("%Y-%m-%d-%I%M%p")
