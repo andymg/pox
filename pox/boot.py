@@ -511,7 +511,7 @@ def boot (argv = None):
       _post_startup()
       core.goUp()
       time.sleep(2)
-      cli = Cli_Transfer_Task()
+      cli = Cli_Transfer_Task(port='6633',address='172.16.6.47')
       # cli.new_thread()
       thread.start_new_thread(cli.run(),())
     else:

@@ -17,6 +17,7 @@ import pox
 import pox.lib.util
 from pox.lib.addresses import EthAddr
 from pox.lib.revent.revent import EventMixin
+import pox.openflow.libopenflow_01 as of
 import datetime
 import time
 from pox.lib.socketcapture import CaptureSocket
@@ -44,10 +45,11 @@ class Cli_Transfer_Task (object):
 		self.port = int(port)
 		self.address = address
 		self.started = False
-		#log.info("cli transfer initialed on %s:%s",self.address,self.port)
-		self.cli_client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-		#self.cli_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		#log.info("Created new cli_client socket Cli_Transfer_Task")
+		self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+		self.telnet = do_telnet(address,'admin','','>')
+		#self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		log.debug("Created new socket socket Cli_Transfer_Task")
+		log.debug("cli transfer initialed on %s:%s",self.address,self.port)
 		
 	def pack_hello(self):
 		packed = b""
@@ -56,38 +58,78 @@ class Cli_Transfer_Task (object):
 		return packed
 
 	def analysis_data(self,data):
-		print("received data: %s" % binascii.hexlify(data))
+		log.debug("controller -->switch: %s" % binascii.hexlify(data))
 		self.version = ord(data[0])
 		self.header_type = ord(data[1])
 		self.of_len = ord(data[2])*256+ord(data[3])
 		self.of_load= data[4:]
 		if self.version != 1:
-			print("The openflow protocol is not supported, it is %d"% of_ver)
+			log.debug("The openflow protocol is not supported, it is %d"% of_ver)
 		if self.header_type == 0: # this is the hello message
+			log.debug("controller -->switch hello message")
 			self.xid = ord(data[6])*256+ord(data[7])
 			hello_req = self.pack_hello()
-			self.cli_client.send(hello_req)
+			log.debug("switch --> controller: %s"%binascii.hexlify(hello_req))
+			self.socket.send(hello_req)
+
+		elif self.header_type == 5: # this is the feature request message
+			log.debug("controller --> switch feature request package")
+			feature_reply = of.ofp_features_reply()
+			log.debug("switch --> controller: %s"% binascii.hexlify(feature_reply.pack()))
+			self.socket.send(feature_reply.pack())
+
+		elif self.header_type == 9: # the set config package
+			log.debug("controller --> switch set config package")
+
+		elif self.header_type == 14: # barrier request
+			log.debug("controller --> switch barrier request package")
+			
+			# the xid must the same as barrier request
+			barrier_reply = of.ofp_barrier_reply()
+			barrier_reply.xid = ord(data[-1])
+			log.debug("switch --> controller: %s"% binascii.hexlify(barrier_reply.pack()))
+			self.socket.send(barrier_reply.pack())
+
 		else:
-			print("Now received: %s"%binascii.hexlify(data))
+			log.debug("controller --> switch  unknow package")
+			self.telnet.write("%s"%binascii.hexlify(data)) # write testin data to cli
+			log.debug("controller --> switch: %s"%binascii.hexlify(data))
 
 	def run (self):
-		#log.info("Cli_Transfer_Task.run is called")
+		log.debug("Cli_Transfer_Task.run is called")
 		try:
-			self.cli_client.connect((self.address,self.port))
-			while True:  #core.running
-				data = self.cli_client.recv(1024)
+			self.socket.connect(('0.0.0.0',self.port))
+			while core.running:
+				data = self.socket.recv(1024)
 				if not data:
 					break
 				self.analysis_data(data)
-				#log.info("received data: %s" % binascii.hexlify(data))
-			self.cli_client.close()
+			self.socket.close()
+			self.telnet.close()
 		except socket.error as (errno, strerror):			#log.error("Error %i while cli_client connect on socket: %s",errno,strerror)
-			#if errno == EADDRNOTAVAIL:
-				#log.error("You may be specifying a local address which is not assigned to any interface.")
-#			else:
-				#log.error("the client connect failed")
-			#return
-			pass
+			if errno == EADDRNOTAVAIL:
+				log.error("You may be specifying a local address which is not assigned to any interface.")
+			else:
+				log.error("the client connect failed")
+			return
+def do_telnet(Host, username, password, finish):
+    import telnetlib
+    import time
+    """
+    The telnet function for telnet device
+    """
+    en = '\r\n'
+    tn = telnetlib.Telnet(Host, port=23, timeout=50)
+    tn.set_debuglevel(1)
+     
+    tn.read_until('\n\rUsername: ')
+    tn.write(username+en)
+    
+    #tn.read_until('dmin')
+    tn.read_until('Password: ')
+    tn.write(password + en)
+    tn.read_until(finish)
+    return tn
 
 def launch(port=6633,address='0.0.0.0'):
 	"""
