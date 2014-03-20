@@ -32,6 +32,7 @@ import socket
 import select
 import binascii
 import thread
+import struct
 
 class Cli_Transfer_Task (object):
 	"""
@@ -43,32 +44,50 @@ class Cli_Transfer_Task (object):
 		self.port = int(port)
 		self.address = address
 		self.started = False
-		log.info("cli transfer initialed on %s:%s",self.address,self.port)
+		#log.info("cli transfer initialed on %s:%s",self.address,self.port)
 		self.cli_client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 		#self.cli_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		log.info("Created new cli_client socket Cli_Transfer_Task")
+		#log.info("Created new cli_client socket Cli_Transfer_Task")
+		
+	def pack_hello(self):
+		packed = b""
+		packed += struct.pack("!BBHL", self.version, self.header_type,
+		8, self.xid)
+		return packed
+
+	def analysis_data(self,data):
+		print("received data: %s" % binascii.hexlify(data))
+		self.version = ord(data[0])
+		self.header_type = ord(data[1])
+		self.of_len = ord(data[2])*256+ord(data[3])
+		self.of_load= data[4:]
+		if self.version != 1:
+			print("The openflow protocol is not supported, it is %d"% of_ver)
+		if self.header_type == 0: # this is the hello message
+			self.xid = ord(data[6])*256+ord(data[7])
+			hello_req = self.pack_hello()
+			self.cli_client.send(hello_req)
+		else:
+			print("Now received: %s"%binascii.hexlify(data))
 
 	def run (self):
-		log.info("Cli_Transfer_Task.run is called")
+		#log.info("Cli_Transfer_Task.run is called")
 		try:
 			self.cli_client.connect((self.address,self.port))
-			while core.running:
+			while True:  #core.running
 				data = self.cli_client.recv(1024)
 				if not data:
 					break
-				log.info("received data: %s" % binascii.hexlify(data))
+				self.analysis_data(data)
+				#log.info("received data: %s" % binascii.hexlify(data))
 			self.cli_client.close()
-		except socket.error as (errno, strerror):
-			log.error("Error %i while cli_client connect on socket: %s",errno,strerror)
-			if errno == EADDRNOTAVAIL:
-				log.error("You may be specifying a local address which is not assigned to any interface.")
-			else:
-				log.error("the client connect failed")
-			return
-	def new_thread(self,port=6633,address='0.0.0.0'):
-		cli = self.__init__(port=int(port),address=address)
-		cli_thread = thread.start_new_thread(run())
-		return cli_thread
+		except socket.error as (errno, strerror):			#log.error("Error %i while cli_client connect on socket: %s",errno,strerror)
+			#if errno == EADDRNOTAVAIL:
+				#log.error("You may be specifying a local address which is not assigned to any interface.")
+#			else:
+				#log.error("the client connect failed")
+			#return
+			pass
 
 def launch(port=6633,address='0.0.0.0'):
 	"""

@@ -667,6 +667,10 @@ class Connection (EventMixin):
     self.info(msg)
     self.disconnected = True
     try:
+      self.telnet.close()
+    except:
+      pass
+    try:
       self.ofnexus._disconnect(self.dpid)
     except:
       pass
